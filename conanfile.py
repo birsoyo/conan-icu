@@ -16,7 +16,7 @@
 
 import os
 import glob
-from conans import ConanFile, tools, AutoToolsBuildEnvironment
+from conans import ConanFile, tools, AutoToolsBuildEnvironment, MSBuild
 
 
 class IcuConan(ConanFile):
@@ -26,7 +26,7 @@ class IcuConan(ConanFile):
     license = "http://www.unicode.org/copyright.html#License"
     description = "ICU is a mature, widely used set of C/C++ and Java libraries " \
                   "providing Unicode and Globalization support for software applications."
-    url = "https://github.com/bincrafters/conan-icu"
+    url = "https://github.com/birsoyo/conan-icu"
     settings = "os", "arch", "compiler", "build_type"
     source_url = "https://github.com/unicode-org/icu/archive/release-{0}.tar.gz".format(version.replace('.', '-'))
 
@@ -72,6 +72,22 @@ class IcuConan(ConanFile):
         os.rename("{0}-release-{1}".format(self.name, self.version.replace('.', '-')), 'sources')
 
     def build(self):
+        if self.settings.os == 'WindowsStore':
+            self.build_msvc_uwp()
+            return
+
+        self.update_config_files()
+
+        patchfiles =  [
+                        # see ICU Ticket: http://bugs.icu-project.org/trac/ticket/13469
+                        # slated for inclusion in v61m1
+                        'icu-60.1-msvc-escapesrc.patch',
+                        '0014-mingwize-pkgdata.mingw.patch',
+                        '0020-workaround-missing-locale.patch' ]
+
+        if self.settings.compiler != 'Visual Studio' and self.settings.os == 'Windows':
+            self.apply_patches(patchfiles)
+
         if self.settings.compiler == 'Visual Studio':
             run_configure_icu_file = os.path.join('sources', 'icu4c', 'source', 'runConfigureICU')
 
@@ -111,9 +127,14 @@ class IcuConan(ConanFile):
     def package(self):
         self.copy("LICENSE", dst=".", src=os.path.join(self.source_folder, 'sources', 'icu4c'))
 
-        bin_dir_src, include_dir_src, lib_dir_src, share_dir_src = (os.path.join('output', path) for path in
-                                                                    ('bin', 'include', 'lib', 'share'))
-        if self.settings.os == 'Windows':
+        if self.settings.os == 'WindowsStore':
+            bin_dir_src, include_dir_src, lib_dir_src, share_dir_src = (os.path.join('sources', path) for path in
+                                                                       ('bin64uwp', 'include', 'lib64uwp', 'commondata'))
+        else:
+            bin_dir_src, include_dir_src, lib_dir_src, share_dir_src = (os.path.join('output', path) for path in
+                                                                       ('bin', 'include', 'lib', 'share'))
+        if 'Windows' in self.settings.os:
+            self.output.warn("if 'Windows' in self.settings.os:")
             bin_dir_dst, lib_dir_dst = ('bin64', 'lib64') if self.settings.arch == 'x86_64' else ('bin', 'lib')
 
             # we copy everything for a full ICU package
@@ -130,6 +151,7 @@ class IcuConan(ConanFile):
             self.copy("*", dst="include", src=include_dir_src, keep_path=True, symlinks=True)
             self.copy("*", dst="share", src=share_dir_src, keep_path=True, symlinks=True)
         else:
+            self.output.warn("ELSE: if 'Windows' in self.settings.os:")
             # we copy everything for a full ICU package
             self.copy("*", dst="bin", src=bin_dir_src, keep_path=True, symlinks=True)
             self.copy("*", dst="include", src=include_dir_src, keep_path=True, symlinks=True)
@@ -174,6 +196,9 @@ class IcuConan(ConanFile):
 
         self.env_info.PATH.append(os.path.join(self.package_folder, bin_dir))
 
+        self.cpp_info.defines.append("U_CHARSET_IS_UTF8=1")
+        self.cpp_info.defines.append("U_NO_DEFAULT_INCLUDE_UTF_HEADERS=1")
+
         if not self.options.shared:
             self.cpp_info.defines.append("U_STATIC_IMPLEMENTATION")
             if self.settings.os == 'Linux':
@@ -182,8 +207,27 @@ class IcuConan(ConanFile):
             if self.settings.os == 'Windows':
                 self.cpp_info.libs.append('advapi32')
 
-        if self.settings.compiler in ["gcc", "clang"]:
-            self.cpp_info.cppflags = ["-std=c++11"]
+        if self.settings.compiler in [ "gcc", "clang" ]:
+            self.cpp_info.cppflags = ["-std=c++17"]
+
+
+    def update_config_files(self):
+        # update the outdated config.guess and config.sub included in ICU
+        # ICU Ticket: http://bugs.icu-project.org/trac/ticket/13470
+        # slated for fix in v61.1
+        config_updates = ['config.guess', 'config.sub']
+        for cfg_update in config_updates:
+            dst_config = os.path.join('sources', cfg_update)
+            if os.path.isfile(dst_config):
+                os.remove(dst_config)
+            self.output.info('Updating %s' % dst_config)
+            tools.download('http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f={0};hb=HEAD'.format(cfg_update),
+                           dst_config)
+
+    def apply_patches(self,patchfiles):
+        for patch in patchfiles:
+            patchfile = os.path.join('patches',patch)
+            tools.patch(base_path=os.path.join('sources'), patch_file=patchfile, strip=1)
 
     def build_config_cmd(self):
         outdir = self.cfg['output_dir'].replace('\\', '/')
@@ -210,6 +254,16 @@ class IcuConan(ConanFile):
 
         return config_cmd
 
+    def build_msvc_uwp(self):
+        msbuild = MSBuild(self)
+        bt = self.settings.build_type
+        if self.settings.build_type == 'RelWithDebInfo':
+            bt = 'Release'
+        #msbuild.build('sources/source/allinone/allinone.sln', targets=['common_uwp', 'i18n_uwp', 'makedata_uwp'])
+        tools.replace_in_file('sources/icu4c/source/allinone/Build.Windows.Library.ProjectConfiguration.props', '_HAS_EXCEPTIONS=0;', '_HAS_EXCEPTIONS=0;U_CHARSET_IS_UTF8=1;U_NO_DEFAULT_INCLUDE_UTF_HEADERS=1;')
+        cmd = msbuild.get_command('sources/icu4c/source/allinone/allinone.sln', build_type=bt, targets=['common_uwp', 'i18n_uwp', 'makedata_uwp'])
+        self.run(cmd)
+
     def _build_cygwin_msvc(self):
         self.cfg['platform'] = 'Cygwin/MSVC'
 
@@ -221,6 +275,14 @@ class IcuConan(ConanFile):
         os.environ['PATH'] = os.path.join(os.environ['CYGWIN_ROOT'], 'bin') + os.pathsep + \
             os.path.join(os.environ['CYGWIN_ROOT'], 'usr', 'bin') + os.pathsep + \
             os.environ['PATH']
+
+        outdir = self.cfg['output_dir'].replace('\\', '/')
+        os.makedirs(f'{outdir}/lib', exist_ok=True)
+
+        os.environ['CPPFLAGSICUUC'] = f'-FS -Fd{outdir}/lib/icuuc.pdb'
+        os.environ['CPPFLAGSICUI18N'] = f'-FS -Fd{outdir}/lib/icuin.pdb'
+        os.environ['CPPFLAGSICUIO'] = f'-FS -Fd{outdir}/lib/icuio.pdb'
+        os.environ['CPPFLAGS'] = '-DU_CHARSET_IS_UTF8=1 -DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1'
 
         os.mkdir(self.cfg['build_dir'])
 

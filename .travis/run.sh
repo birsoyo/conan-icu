@@ -8,6 +8,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
         eval "$(pyenv init -)"
     fi
     pyenv activate conan
+    sesame build --macos --upload
+else
+    sesame build --linux --upload
 fi
 
-python build.py
+

@@ -1,6 +1,6 @@
-[![Download](https://api.bintray.com/packages/bincrafters/public-conan/icu%3Abincrafters/images/download.svg) ](https://bintray.com/bincrafters/public-conan/icu%3Abincrafters/_latestVersion)
-[![Build Status](https://travis-ci.org/bincrafters/conan-icu.svg?branch=stable%2F62.1)](https://travis-ci.org/bincrafters/conan-icu)
-[![Build status](https://ci.appveyor.com/api/projects/status/github/bincrafters/conan-icu?branch=stable%2F62.1&svg=true)](https://ci.appveyor.com/project/bincrafters/conan-icu)
+[![Download](https://api.bintray.com/packages/orhun/sesame/icu%3Asesame/images/download.svg) ](https://bintray.com/orhun/sesame/icu%3Asesame/_latestVersion)
+[![Build Status](https://travis-ci.org/birsoyo/conan-icu.svg?branch=stable%2F60.2)](https://travis-ci.org/birsoyo/conan-icu)
+[![Build status](https://ci.appveyor.com/api/projects/status/lw46xba42m921k2u?svg=true)](https://ci.appveyor.com/project/birsoyo/conan-icu)
 
 [Conan.io](https://conan.io) package recipe for [*icu*](http://site.icu-project.org).
 

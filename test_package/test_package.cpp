@@ -33,10 +33,13 @@
 #include "unicode/ustring.h"
 #include "unicode/ucnv.h"
 #include "unicode/unistr.h"
+#include "unicode/utf16.h"
 
 #ifndef UPRV_LENGTHOF
 #define UPRV_LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 #endif
+
+using namespace icu;
 
 // helper functions -------------------------------------------------------- ***
 
