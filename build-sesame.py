@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from bincrafters import build_template_default
+from sesame import build_template_default
 from cpt.tools import split_colon_env
 
 def main():

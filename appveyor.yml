@@ -1,27 +1,47 @@
-build: false
+version: '{build}'
 
-configuration:
-  - Debug
-  - Release
+image:
+- Visual Studio 2017
+- Ubuntu1804
+
+build:
+  verbosity: minimal
+
+clone_depth: 1
 
 environment:
-    PYTHON: "C:\\Python37-x64"
-
     matrix:
-        - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-          CONAN_VISUAL_VERSIONS: 15
-          ARCH_BUILD: x86_64
+        - ARCH_BUILD: x86_64
           ARCH: x86_64
+          PYTHON: "C:\\Python37-x64"
+stack: python 3.7
 
 matrix:
   fast_finish: true
 
-install:
-  - set PATH=%PYTHON%/Scripts;%PYTHON%;%PATH%
-  - pip.exe install --upgrade conan
-  - pip.exe install --upgrade sesame-package-tools conan-package-tools bincrafters-package-tools
-  - conan user
-  - conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
+for:
+  -
+    matrix:
+      only:
+        - image: Visual Studio 2017
 
-test_script:
-  - ps: sesame build --windows --upload
+    install:
+      - set PATH=%PYTHON%/Scripts;%PYTHON%;%PATH%
+      - pip.exe install --upgrade conan conan-package-tools
+      - pip.exe install --upgrade --pre sesame-package-tools
+      - conan user
+      - conan profile new --detect default
+
+  -
+    matrix:
+      only:
+        - image: Ubuntu1804
+
+    install:
+      - pip3 install --upgrade conan conan-package-tools
+      - pip3 install --upgrade --pre sesame-package-tools
+      - conan user
+      - conan profile new --detect default
+
+build_script:
+  - sesame build --windows --upload --channel stable

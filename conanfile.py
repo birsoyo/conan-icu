@@ -63,8 +63,10 @@ class IcuConan(ConanFile):
             del self.options.fPIC
 
     def configure(self):
-        if self.settings.compiler in ["gcc", "clang"]:
+        if self.settings.compiler in ["gcc"]:
             self.settings.compiler.libcxx = 'libstdc++11'
+        elif self.settings.compiler in ["clang"]:
+            self.settings.compiler.libcxx = 'libc++'
 
     def source(self):
         self.output.info("Fetching sources: {0}".format(self.source_url))
@@ -207,7 +209,7 @@ class IcuConan(ConanFile):
             if self.settings.os == 'Windows':
                 self.cpp_info.libs.append('advapi32')
 
-        if self.settings.compiler in [ "gcc", "clang" ]:
+        if self.settings.compiler in [ "gcc", "clang", "apple-clang" ]:
             self.cpp_info.cppflags = ["-std=c++17"]
 
 
@@ -283,6 +285,7 @@ class IcuConan(ConanFile):
         os.environ['CPPFLAGSICUI18N'] = f'-FS -Fd{outdir}/lib/icuin.pdb'
         os.environ['CPPFLAGSICUIO'] = f'-FS -Fd{outdir}/lib/icuio.pdb'
         os.environ['CPPFLAGS'] = '-DU_CHARSET_IS_UTF8=1 -DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1'
+        os.environ['CXXFLAGS'] = '/std=c++17'
 
         os.mkdir(self.cfg['build_dir'])
 
